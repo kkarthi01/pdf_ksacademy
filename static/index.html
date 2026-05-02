@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DocScanner</title>
+  <style>
+    :root {
+      --bg: #0f0f11;
+      --surface: #1a1a1f;
+      --border: #2a2a32;
+      --text: #e8e8ec;
+      --muted: #888898;
+      --accent: #5f6fff;
+      --accent-dim: #1e2050;
+      --success: #22c55e;
+      --font: 'Inter', system-ui, sans-serif;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg); color: var(--text);
+      font-family: var(--font); min-height: 100vh;
+    }
+
+    header {
+      padding: 1rem 2rem;
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; gap: 14px;
+    }
+    .logo-mark {
+      width: 44px; height: 44px; border-radius: 10px;
+      background: #1e2050; border: 1px solid #3a3a70;
+      display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    }
+    .header-text { display: flex; flex-direction: column; gap: 2px; }
+    .header-text .academy { font-size: 14px; font-weight: 700; color: #e8e8ec; letter-spacing: -0.01em; }
+    .header-text .location { font-size: 11px; color: #888898; letter-spacing: 0.02em; }
+    .header-divider { width: 1px; height: 28px; background: #2a2a32; margin: 0 2px; }
+    .app-label { font-size: 13px; font-weight: 500; color: var(--accent); }
+    .header-pill {
+      font-size: 11px; padding: 2px 8px; border-radius: 99px;
+      background: var(--accent-dim); color: var(--accent); margin-left: auto;
+    }
+
+    main { max-width: 1100px; margin: 0 auto; padding: 2rem; }
+
+    /* Drop zone */
+    #dropZone {
+      border: 1.5px dashed var(--border); border-radius: 12px;
+      padding: 3rem 2rem; text-align: center; cursor: pointer;
+      transition: all 0.15s;
+    }
+    #dropZone:hover { border-color: var(--accent); background: var(--accent-dim); }
+    #dropZone.drag-over { border-color: var(--accent); background: var(--accent-dim); }
+    #dropZone .icon {
+      width: 52px; height: 52px; margin: 0 auto 1rem;
+      border: 1px solid var(--border); border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+    }
+    #dropZone .icon svg { width: 24px; height: 24px; stroke: var(--muted); fill: none; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+    #dropZone h2 { font-size: 16px; font-weight: 500; margin-bottom: 6px; }
+    #dropZone p  { font-size: 13px; color: var(--muted); }
+
+    /* Workspace */
+    #workspace { display: none; }
+
+    .top-bar {
+      display: flex; align-items: center; gap: 12px;
+      margin-bottom: 1.5rem;
+    }
+    .top-bar h2 { font-size: 15px; font-weight: 500; }
+    .top-bar .filename { font-size: 13px; color: var(--muted); }
+    .top-bar button { margin-left: auto; }
+
+    .layout { display: grid; grid-template-columns: 1fr 320px; gap: 1.5rem; }
+
+    /* Previews */
+    .previews { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .preview-box { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+    .preview-box .label {
+      padding: 8px 12px; font-size: 11px; font-weight: 500;
+      text-transform: uppercase; letter-spacing: 0.06em;
+      color: var(--muted); border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; gap: 8px;
+    }
+    .preview-box .inner {
+      min-height: 220px; display: flex; align-items: center;
+      justify-content: center; padding: 8px; position: relative;
+    }
+    .preview-box img { max-width: 100%; max-height: 340px; display: block; border-radius: 4px; }
+    .preview-box .loading {
+      position: absolute; inset: 0; display: flex;
+      align-items: center; justify-content: center;
+      background: rgba(15,15,17,0.75); font-size: 13px; color: var(--muted);
+    }
+    .badge {
+      display: inline-block; padding: 2px 7px; border-radius: 99px;
+      font-size: 10px; font-weight: 500; letter-spacing: 0.04em;
+    }
+    .badge.blue { background: var(--accent-dim); color: var(--accent); }
+    .badge.green { background: #0d2e1a; color: var(--success); }
+
+    /* Controls panel */
+    .controls {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 12px; padding: 1.25rem; display: flex;
+      flex-direction: column; gap: 1.25rem;
+    }
+    .ctrl-section h3 {
+      font-size: 11px; font-weight: 500; text-transform: uppercase;
+      letter-spacing: 0.07em; color: var(--muted); margin-bottom: 10px;
+    }
+
+    /* Filter buttons */
+    .filter-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+    .filter-btn {
+      padding: 9px 8px; border: 1px solid var(--border);
+      border-radius: 8px; background: transparent; color: var(--muted);
+      font-size: 12px; font-weight: 500; cursor: pointer; transition: all 0.1s;
+      text-align: center;
+    }
+    .filter-btn:hover { border-color: var(--accent); color: var(--text); }
+    .filter-btn.active { border-color: var(--accent); background: var(--accent-dim); color: var(--accent); }
+
+    /* Sliders */
+    .slider-row { margin-bottom: 10px; }
+    .slider-row .row-top {
+      display: flex; justify-content: space-between;
+      font-size: 12px; color: var(--muted); margin-bottom: 5px;
+    }
+    .slider-row .row-top strong { color: var(--text); font-weight: 500; }
+    input[type=range] {
+      width: 100%; accent-color: var(--accent);
+      -webkit-appearance: none; height: 4px; border-radius: 99px;
+      background: var(--border); outline: none; cursor: pointer;
+    }
+    input[type=range]::-webkit-slider-thumb {
+      -webkit-appearance: none; width: 14px; height: 14px;
+      border-radius: 50%; background: var(--accent);
+    }
+
+    /* Checkbox */
+    .check-row {
+      display: flex; align-items: center; gap: 8px;
+      font-size: 13px; color: var(--text); cursor: pointer;
+    }
+    input[type=checkbox] { accent-color: var(--accent); width: 14px; height: 14px; }
+
+    /* Separator */
+    .sep { height: 1px; background: var(--border); }
+
+    /* Buttons */
+    .btn {
+      padding: 9px 16px; border-radius: 8px; font-size: 13px;
+      font-weight: 500; cursor: pointer; transition: all 0.12s; border: none;
+    }
+    .btn-primary { background: var(--accent); color: #fff; }
+    .btn-primary:hover { opacity: 0.88; }
+    .btn-secondary { background: transparent; color: var(--muted); border: 1px solid var(--border); }
+    .btn-secondary:hover { color: var(--text); border-color: var(--muted); }
+    .btn:active { transform: scale(0.97); }
+    .btn-row { display: flex; flex-direction: column; gap: 8px; }
+
+    /* Progress bar */
+    #progress {
+      height: 2px; background: var(--accent); width: 0%;
+      transition: width 0.3s; border-radius: 99px;
+      position: fixed; top: 0; left: 0; z-index: 99;
+    }
+  </style>
+</head>
+<body>
+<div id="progress"></div>
+
+<header>
+  <div class="logo-mark">
+  <img src="./static/logo.png" style="width:36px;height:36px;object-fit:contain;border-radius:6px">
+</div>
+  <div class="header-text">
+    <span class="academy">TRB Physics KS Academy</span>
+    <span class="location">Salem</span>
+  </div>
+  <div class="header-divider"></div>
+  <span class="app-label">Excellant Learning platform for Physics</span>
+  <span class="header-pill">Connect everywhere!!</span>
+</header>
+
+<main>
+  <!-- Drop Zone -->
+  <div id="dropZone">
+    <div style="margin-bottom:1.5rem;display:flex;flex-direction:column;align-items:center;gap:10px">
+      <div style="width:64px;height:64px;border-radius:16px;overflow:hidden;border:1px solid #3a3a70">
+  <img src=./static/logo.png" style="width:100%;height:100%;object-fit:cover">
+</div>
+      <div style="text-align:center">
+        <div style="font-size:20px;font-weight:800;color:#e8e8ec;letter-spacing:-0.02em">TRB Physics KS Academy</div>
+        <div style="font-size:13px;color:#5f6fff;font-weight:500;letter-spacing:0.08em;margin-top:2px">SALEM</div>
+      </div>
+      <div style="font-size:11px;color:#444456;border:1px solid #2a2a32;padding:2px 10px;border-radius:99px">Document Scanner</div>
+    </div>
+    <div class="icon">
+      <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+    </div>
+    <h2>Drop your document here</h2>
+    <p>JPG, PNG, or PDF — photos, notes, receipts, whiteboards</p>
+    <input type="file" id="fileInput" accept="image/*,.pdf" style="display:none">
+  </div>
+
+  <!-- Workspace -->
+  <div id="workspace">
+    <div class="top-bar">
+      <h2>Document scanner</h2>
+      <span class="filename" id="fileName"></span>
+      <button class="btn btn-secondary" onclick="resetApp()">New file</button>
+    </div>
+
+    <div class="layout">
+      <div class="previews">
+        <div class="preview-box">
+          <div class="label">Original <span class="badge blue">input</span></div>
+          <div class="inner">
+            <img id="origImg" src="" alt="Original">
+            <canvas id="origPdfCanvas" style="display:none;max-width:100%;max-height:300px;border-radius:4px"></canvas>
+            <div id="origPdfLoading" style="display:none;font-size:12px;color:#888898">Rendering preview...</div>
+          </div>
+        </div>
+        <div class="preview-box">
+          <div class="label">Processed <span class="badge green" id="filterBadge">scanner</span></div>
+          <div class="inner">
+            <img id="procImg" src="" alt="Processed" style="display:none">
+            <div id="pdfResult" style="display:none;flex-direction:column;align-items:center;gap:8px;width:100%;padding:8px">
+              <div style="position:relative;width:100%;display:flex;justify-content:center">
+                <canvas id="procPdfCanvas" style="max-width:100%;max-height:280px;border-radius:4px"></canvas>
+                <div id="pdfPageBadge" style="position:absolute;bottom:8px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.6);color:#e8e8ec;font-size:11px;padding:3px 10px;border-radius:99px;white-space:nowrap"></div>
+              </div>
+              <button class="btn btn-primary" onclick="downloadResult()" style="font-size:12px;padding:7px 18px;width:100%">Download scanned PDF</button>
+            </div>
+            <div class="loading" id="loadingOverlay" style="display:none">Processing...</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="controls">
+        <div class="ctrl-section">
+          <h3>Filter mode</h3>
+          <div class="filter-grid">
+            <button class="filter-btn active" data-mode="scanner" onclick="setMode(this)">Scanner B/W</button>
+            <button class="filter-btn" data-mode="magic" onclick="setMode(this)">Magic Color</button>
+            <button class="filter-btn" data-mode="grayscale" onclick="setMode(this)">Soft Gray</button>
+            <button class="filter-btn" data-mode="highcontrast" onclick="setMode(this)">High Contrast</button>
+          </div>
+        </div>
+
+        <div class="sep"></div>
+
+        <div class="ctrl-section">
+          <h3>Adjustments</h3>
+          <div class="slider-row">
+            <div class="row-top"><span>Brightness</span><strong id="vBright">0</strong></div>
+            <input type="range" id="sBright" min="-100" max="100" value="0" step="1" oninput="onSlider(this,'vBright')">
+          </div>
+          <div class="slider-row">
+            <div class="row-top"><span>Contrast</span><strong id="vContrast">20</strong></div>
+            <input type="range" id="sContrast" min="-100" max="100" value="20" step="1" oninput="onSlider(this,'vContrast')">
+          </div>
+          <div class="slider-row">
+            <div class="row-top"><span>Threshold</span><strong id="vThresh">150</strong></div>
+            <input type="range" id="sThresh" min="80" max="220" value="150" step="1" oninput="onSlider(this,'vThresh')">
+          </div>
+        </div>
+
+        <div class="sep"></div>
+
+        <div class="ctrl-section">
+          <h3>Options</h3>
+          <label class="check-row">
+            <input type="checkbox" id="chkWarp" checked> Auto perspective correction
+          </label>
+        </div>
+
+        <div class="sep"></div>
+
+        <div class="btn-row">
+          <button class="btn btn-primary" onclick="processScan()">Apply filter</button>
+          <button class="btn btn-secondary" onclick="downloadResult()">Download result</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script>
+  pdfjsLib.GlobalWorkerOptions.workerSrc =
+    'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+  let currentFile = null;
+  let currentMode = 'scanner';
+  let resultBlob = null;
+  let resultType = 'image';
+  let debounceTimer = null;
+
+  const dropZone  = document.getElementById('dropZone');
+  const fileInput = document.getElementById('fileInput');
+  const workspace = document.getElementById('workspace');
+  const origImg   = document.getElementById('origImg');
+  const procImg   = document.getElementById('procImg');
+  const overlay   = document.getElementById('loadingOverlay');
+  const progress  = document.getElementById('progress');
+
+  dropZone.onclick = () => fileInput.click();
+  dropZone.ondragover  = (e) => { e.preventDefault(); dropZone.classList.add('drag-over'); };
+  dropZone.ondragleave = ()  => dropZone.classList.remove('drag-over');
+  dropZone.ondrop = (e) => {
+    e.preventDefault();
+    dropZone.classList.remove('drag-over');
+    const f = e.dataTransfer.files[0];
+    if (f) loadFile(f);
+  };
+  fileInput.onchange = () => { if (fileInput.files[0]) loadFile(fileInput.files[0]); };
+
+  function loadFile(file) {
+    currentFile = file;
+    document.getElementById('fileName').textContent = file.name;
+    const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
+    const origCanvas = document.getElementById('origPdfCanvas');
+    const origLoading = document.getElementById('origPdfLoading');
+
+    if (isPdf) {
+      origImg.style.display = 'none';
+      origCanvas.style.display = 'none';
+      origLoading.style.display = 'block';
+      // Render first page via PDF.js
+      const url = URL.createObjectURL(file);
+      pdfjsLib.getDocument(url).promise.then(pdf => {
+        pdf.getPage(1).then(page => {
+          const vp = page.getViewport({ scale: 1.5 });
+          origCanvas.width = vp.width;
+          origCanvas.height = vp.height;
+          page.render({ canvasContext: origCanvas.getContext('2d'), viewport: vp }).promise.then(() => {
+            origLoading.style.display = 'none';
+            origCanvas.style.display = 'block';
+          });
+        });
+      }).catch(() => {
+        origLoading.textContent = 'Preview unavailable';
+      });
+    } else {
+      origCanvas.style.display = 'none';
+      origLoading.style.display = 'none';
+      origImg.style.display = 'block';
+      origImg.src = URL.createObjectURL(file);
+    }
+    dropZone.style.display = 'none';
+    workspace.style.display = 'block';
+    processScan();
+  }
+
+  function setMode(btn) {
+    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    currentMode = btn.dataset.mode;
+    document.getElementById('filterBadge').textContent = currentMode;
+    scheduleProcess();
+  }
+
+  function onSlider(input, valId) {
+    document.getElementById(valId).textContent = input.value;
+    scheduleProcess();
+  }
+
+  function scheduleProcess() {
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(processScan, 400);
+  }
+
+  async function processScan() {
+    if (!currentFile) return;
+    overlay.style.display = 'flex';
+    overlay.textContent = 'Processing...';
+    procImg.style.display = 'none';
+    document.getElementById('pdfResult').style.display = 'none';
+    progress.style.width = '40%';
+
+    const fd = new FormData();
+    fd.append('file', currentFile);
+    fd.append('mode', currentMode);
+    fd.append('brightness', document.getElementById('sBright').value);
+    fd.append('contrast',   document.getElementById('sContrast').value);
+    fd.append('threshold',  document.getElementById('sThresh').value);
+    fd.append('warp', document.getElementById('chkWarp').checked ? '1' : '0');
+    fd.append('output_fmt', 'jpeg');
+
+    try {
+      const res = await fetch('/scan', { method: 'POST', body: fd });
+      if (!res.ok) {
+        let errMsg = 'Error processing image';
+        try { const d = await res.json(); errMsg = d.error || errMsg; } catch(_) {}
+        overlay.innerHTML = `<span style="color:#ff6b6b;font-size:12px;padding:8px;text-align:center">&#9888; ${errMsg}</span>`;
+        return;
+      }
+
+      resultBlob = await res.blob();
+      const contentType = res.headers.get('content-type') || '';
+
+      if (contentType.includes('application/pdf')) {
+        resultType = 'pdf';
+        const pages = res.headers.get('x-page-count') || '?';
+        document.getElementById('pdfPageBadge').textContent = `Page 1 of ${pages} — scroll to see all`;
+        // Render first page of output PDF via PDF.js
+        const pdfUrl = URL.createObjectURL(resultBlob);
+        pdfjsLib.getDocument(pdfUrl).promise.then(pdf => {
+          pdf.getPage(1).then(page => {
+            const procCanvas = document.getElementById('procPdfCanvas');
+            const vp = page.getViewport({ scale: 1.5 });
+            procCanvas.width = vp.width;
+            procCanvas.height = vp.height;
+            page.render({ canvasContext: procCanvas.getContext('2d'), viewport: vp }).promise.then(() => {
+              overlay.style.display = 'none';
+              document.getElementById('pdfResult').style.display = 'flex';
+            });
+          });
+        });
+      } else {
+        resultType = 'image';
+        const url = URL.createObjectURL(resultBlob);
+        procImg.src = url;
+        procImg.style.display = 'block';
+        overlay.style.display = 'none';
+        document.getElementById('pdfResult').style.display = 'none';
+      }
+
+      progress.style.width = '100%';
+      setTimeout(() => { progress.style.width = '0%'; }, 600);
+    } catch(e) {
+      overlay.style.display = 'none';
+      alert('Could not connect to backend. Make sure Flask is running on port 5000.');
+    }
+  }
+
+  function downloadResult() {
+    if (!resultBlob) return;
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(resultBlob);
+    a.download = resultType === 'pdf' ? 'scanned_doc.pdf' : 'scanned_doc.jpg';
+    a.click();
+  }
+
+  function resetApp() {
+    currentFile = null; resultBlob = null; resultType = 'image';
+    workspace.style.display = 'none';
+    dropZone.style.display = 'block';
+    fileInput.value = '';
+    procImg.style.display = 'none';
+    document.getElementById('pdfResult').style.display = 'none';
+    document.getElementById('origPdfCanvas').style.display = 'none';
+    document.getElementById('origPdfLoading').style.display = 'none';
+    origImg.style.display = 'block';
+  }
+</script>
+</body>
+</html>
